@@ -38,20 +38,7 @@ def kpi(state):
     g["MargePct"] = g["Marge"] / g["CA"]
     g["PanierMoyen"] = g["CA"] / g["NbCommandes"]
     g["PartPromo"] = g["CA_Promo"] / g["CA"]
-
-    # EvolutionCA : uniquement calculée entre deux mois strictement consécutifs (écart = 1 mois).
-    # Si les lignes ne sont pas consécutives (données manquantes ou saut d'année entre périodes),
-    # la valeur est mise à NaN pour éviter une évolution trompeuse.
-    evolution = g["CA"].pct_change()
-    # Ordinal month arithmetic avoids Period.diff overflow warnings in newer pandas.
-    periodes = pd.PeriodIndex(g["AnneeMois"], freq="M")
-    ordinaux_mois = pd.Series([p.year * 12 + p.month for p in periodes], index=g.index)
-    gaps = ordinaux_mois.diff()
-    non_consecutive = gaps != 1
-    non_consecutive.iloc[0] = True  # première ligne toujours NaN
-    evolution[non_consecutive] = float("nan")
-    g["EvolutionCA"] = evolution
-
+    g["EvolutionCA"] = g["CA"].pct_change()
     g = g.drop(columns="CA_Promo").round(4)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

@@ -12,13 +12,12 @@ except ModuleNotFoundError:
 
 
 def extract(state):
-    pbix_path = Path(state.get("pbix_path") or PBIX_PATH)
-    if not pbix_path.exists():
-        raise FileNotFoundError(f"Fichier PBIX introuvable : {pbix_path}")
+    if not PBIX_PATH.exists():
+        raise FileNotFoundError(f"Fichier PBIX introuvable : {PBIX_PATH}")
 
-    data_dir = pbix_path.parent
+    data_dir = Path(PBIX_PATH).parent
     data_dir.mkdir(parents=True, exist_ok=True)
-    m = PBIXRay(str(pbix_path))
+    m = PBIXRay(str(PBIX_PATH))
 
     tables = {}
     for nom in m.tables:
