@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PerfPulse AI — Dashboard d'Analyse des Performances BI</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Light Executive Theme CSS -->
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#overview" aria-label="PerfPulse, vue générale">
+        <span class="brand-icon">P</span>
+        <span class="brand-copy"><span class="brand-title">PerfPulse</span><span class="brand-subtitle">Business intelligence</span></span>
+      </a>
+      <nav class="side-nav" aria-label="Navigation principale">
+        <a class="side-link active" href="#overview"><span class="side-icon">◫</span><span>Vue générale</span></a>
+        <a class="side-link" href="#pipeline"><span class="side-icon">⟳</span><span>Pipeline</span></a>
+        <a class="side-link" href="#trends"><span class="side-icon">↗</span><span>Tendances</span></a>
+        <a class="side-link" href="#monthly-analyses"><span class="side-icon">▤</span><span>Analyses mensuelles</span></a>
+        <a class="side-link" href="#quality"><span class="side-icon">✓</span><span>Qualité IA</span></a>
+      </nav>
+      <div class="sidebar-model"><span class="model-dot"></span><span>Modèle actif</span><strong id="badge-pbix-name">finalbi.pbix</strong></div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div class="page-heading"><span>PerfPulse BI</span><h1>Vue générale</h1></div>
+        <div class="topbar-actions">
+          <button id="btn-reset" class="btn-secondary" title="Réinitialiser les résultats">Réinitialiser</button>
+          <button id="btn-refresh" class="btn-secondary">↻ Actualiser</button>
+          <a href="/api/download/report.html" target="_blank" class="btn-secondary">Rapport HTML</a>
+          <a href="/api/download/report.pdf" download class="btn-secondary">PDF</a>
+          <a href="/api/download/rapport_alertes.csv" download class="btn-secondary">Exporter CSV</a>
+          <button id="btn-run" class="btn-primary"><span>Exécuter le pipeline</span></button>
+        </div>
+      </header>
+
+      <main class="main-content">
+
+    <!-- ── Section 1 : Import PBIX & Stepper Pipeline ── -->
+    <section class="card" id="pipeline">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-title-icon">📥</span>
+          <span>1. Source de Données & Progression des Agents en Direct</span>
+        </div>
+      </div>
+
+      <!-- Upload Zone & File Specs -->
+      <div class="upload-grid">
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="file-input" accept=".pbix" style="display:none">
+          <div class="dropzone-icon">📁</div>
+          <div class="dropzone-text">Glissez-déposez un nouveau fichier .pbix ici</div>
+          <div class="dropzone-sub">ou cliquez pour parcourir les fichiers (max 50 Mo)</div>
+        </div>
+
+        <div class="current-pbix-box">
+          <h4>Fichier Power BI Actuel</h4>
+          <p>Le pipeline est configuré pour analyser le modèle tabulaire Power BI ci-dessous. Vous pouvez lancer directement l'analyse ou importer un autre fichier.</p>
+          <div class="pbix-specs">
+            <div class="pbix-spec-item">📄 Fichier : <strong id="current-pbix-name">finalbi.pbix</strong></div>
+            <div class="pbix-spec-item">💾 Taille : <strong id="current-pbix-size">1.8 Mo</strong></div>
+            <div class="pbix-spec-item">⚡ Moteur : <strong>PBIXRay + LangGraph</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7 Agents Stepper Cards -->
+      <div class="stepper-container" style="margin-top:24px">
+        <div style="font-size:13px;font-weight:700;color:var(--text-secondary);margin-bottom:12px">
+          ÉVOLUTION DU PIPELINE (7 AGENTS AUTONOMES) :
+        </div>
+        <div class="stepper" id="stepper-cards">
+          <!-- Step cards injected via app.js -->
+        </div>
+
+        <div class="progress-wrapper">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <div class="live-log-box">
+          <span class="live-spinner" id="live-spinner" style="display:none"></span>
+          <span id="live-log-text">Prêt à démarrer l'analyse sur le fichier PBIX.</span>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ── Section 2 : Indicateurs Clés Globaux ── -->
+    <section class="stats-grid" id="overview">
+      <div class="stat-card">
+        <div class="stat-label">Chiffre d'Affaires Total</div>
+        <div class="stat-value" id="stat-ca">—</div>
+        <div class="stat-sub" id="stat-ca-sub">Chargement...</div>
+      </div>
+
+      <div class="stat-card margin-card">
+        <div class="stat-label">Taux de Marge Moyen</div>
+        <div class="stat-value" id="stat-marge">—</div>
+        <div class="stat-sub" id="stat-marge-sub">Chargement...</div>
+      </div>
+
+      <div class="stat-card alert-card">
+        <div class="stat-label">Alertes Détectées</div>
+        <div class="stat-value" id="stat-alertes">—</div>
+        <div class="stat-sub" id="stat-alertes-sub">Chargement...</div>
+      </div>
+
+      <div class="stat-card val-card" id="quality">
+        <div class="stat-label">Vérification des commentaires</div>
+        <div class="stat-value" id="stat-val">—</div>
+        <div class="stat-sub" id="stat-val-sub">Chargement...</div>
+      </div>
+    </section>
+
+
+    <!-- ── Section 3 : Synthèse Exécutive de l'Analyste ── -->
+    <section class="synthesis-card">
+      <div class="card-title" style="margin-bottom:8px">
+        <span class="card-title-icon">💡</span>
+        <span>Synthèse Globale de l'Analyste IA (Groq Llama-3.3)</span>
+      </div>
+      <div id="synthesis-content">
+        <p style="color:var(--text-muted);font-size:14px">En attente de la première exécution du pipeline...</p>
+      </div>
+    </section>
+
+
+    <!-- ── Section 4 : Courbes & Graphiques Interactifs ── -->
+    <section id="trends">
+      <div style="margin-bottom:16px">
+        <h3 style="font-size:18px;font-weight:700;color:var(--text-primary)">
+          📊 Visualisation Temporelle & Courbes des Performances
+        </h3>
+        <p style="font-size:13px;color:var(--text-muted)">
+          Courbe temporelle mensuelle avec surbrillance des anomalies détectées par l'agent Detect.
+        </p>
+      </div>
+
+      <div class="trend-filters card">
+        <label>Indicateur
+          <select id="filter-kpi">
+            <option value="ca">Chiffre d'affaires</option>
+            <option value="marge">Marge</option>
+            <option value="marge_pct">Taux de marge</option>
+            <option value="quantite">Quantités</option>
+            <option value="panier">Panier moyen</option>
+            <option value="part_promo">Part en promotion</option>
+          </select>
+        </label>
+        <label>Du mois
+          <input type="month" id="filter-date-start">
+        </label>
+        <label>Au mois
+          <input type="month" id="filter-date-end">
+        </label>
+        <span class="filter-hint">Filtres appliqués aux graphiques</span>
+      </div>
+
+      <div class="charts-grid">
+        <!-- Courbe Principale du CA -->
+        <div class="chart-box">
+          <div class="chart-header">
+            <div class="chart-title" id="chart-primary-title">Évolution du chiffre d'affaires</div>
+            <div class="chart-legend-badge" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca">
+              <span class="badge-alert-dot"></span> Points rouges = Alertes Z-Score
+            </div>
+          </div>
+          <div class="canvas-container">
+            <canvas id="chart-ca"></canvas>
+          </div>
+        </div>
+
+        <!-- Donut Sévérité -->
+        <div class="chart-box">
+          <div class="chart-header">
+            <div class="chart-title">Gravité des Alertes</div>
+            <span style="font-size:11px;color:var(--text-muted)">Z-Score &gt; 2.0</span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="chart-severity"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="charts-grid" style="margin-top:22px">
+        <!-- Courbe Taux de Marge -->
+        <div class="chart-box">
+          <div class="chart-header">
+            <div class="chart-title">Évolution du Taux de Marge (%)</div>
+            <span style="font-size:11px;color:var(--text-muted)">Tendance mensuelle</span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="chart-marge"></canvas>
+          </div>
+        </div>
+
+        <!-- Alertes par KPI -->
+        <div class="chart-box">
+          <div class="chart-header">
+            <div class="chart-title">Alertes par Indicateur</div>
+            <span style="font-size:11px;color:var(--text-muted)">Répartition</span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="chart-kpi-bar"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ── Section 5 : Analyses Mensuelles & Causes Racines ── -->
+    <section class="card" id="monthly-analyses">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-title-icon">🔍</span>
+          <span>Analyses Détaillées par Mois & Décomposition des Causes</span>
+        </div>
+        <span style="font-size:13px;color:var(--text-muted)">Cliquez sur un mois pour dérouler l'analyse</span>
+      </div>
+
+      <div class="analyses-list" id="analyses-container">
+        <!-- Injected via app.js -->
+      </div>
+    </section>
+
+
+    <!-- ── Section 6 : Tableau Interactif des Alertes ── -->
+    <section class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-title-icon">📋</span>
+          <span>Tableau Détaillé des Alertes Détectées</span>
+        </div>
+      </div>
+
+      <div class="table-filter-bar">
+        <input type="text" id="search-input" class="search-input" placeholder="Rechercher par mois, KPI, valeur...">
+        <div class="filter-pills">
+          <button class="filter-pill active" data-filter="all">Toutes</button>
+          <button class="filter-pill" data-filter="haute">Sévérité Haute</button>
+          <button class="filter-pill" data-filter="moyenne">Sévérité Moyenne</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Mois</th>
+              <th>Indicateur (KPI)</th>
+              <th>Valeur</th>
+              <th>Moyenne Réf.</th>
+              <th>Z-Score</th>
+              <th>Écart relatif (%)</th>
+              <th>Sévérité</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- Injected via app.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+      </main>
+
+      <footer>
+    PerfPulse AI — Dashboard d'Analyse des Performances BI &copy; 2026 | Propulsé par LangGraph & Groq Llama 3.3
+      </footer>
+    </div>
+  </div>
+
+  <!-- App Script -->
+  <script src="/static/app.js"></script>
+</body>
+</html>

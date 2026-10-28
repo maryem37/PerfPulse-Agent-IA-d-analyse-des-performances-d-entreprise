@@ -1,42 +1,37 @@
-from __future__ import annotations
+from dotenv import load_dotenv
+load_dotenv()                      # charge GROQ_API_KEY depuis .env (doit rester en premier)
 
-from pathlib import Path
-
-import pandas as pd
-
-from agents.extract import extract
-from agents.kpi import kpi
-from config import DATA_DIR, OUTPUT_DIR
-
-
-def ensure_kpi_csv() -> Path:
-    output_file = OUTPUT_DIR / "kpi_mensuels.csv"
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
-    if output_file.exists():
-        return output_file
-
-    pbix_file = DATA_DIR / "finalbi.pbix"
-    if not pbix_file.exists():
-        raise FileNotFoundError(f"Fichier PBIX introuvable : {pbix_file}")
-
-    state = extract({})
-    kpi_state = kpi(state)
-    if "kpi" not in kpi_state:
-        raise RuntimeError("Le calcul KPI n’a pas produit de DataFrame.")
-
-    if not output_file.exists():
-        raise FileNotFoundError(f"Le fichier KPI n’a pas été généré : {output_file}")
-
-    return output_file
+import json
+from config import OUTPUT_DIR
+from graph import app
 
 
 def main():
-    kpi_file = ensure_kpi_csv()
-    k = pd.read_csv(kpi_file)
-    print(f"KPI rows: {k.shape[0]}")
-    print(k[k["AnneeMois"] == "2019-10"].T)
-    return k
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    resultat = app.invoke({"essais": 0})
+
+    # Faits calculés par l'Analyste (étape 5)
+    with open(OUTPUT_DIR / "faits.json", "w", encoding="utf-8") as f:
+        json.dump(resultat["faits"], f, ensure_ascii=False, indent=1, default=str)
+
+    # Textes rédigés par Groq puis validés (étapes 6 et 7)
+    with open(OUTPUT_DIR / "textes.json", "w", encoding="utf-8") as f:
+        json.dump({"textes": resultat["textes"], "synthese": resultat["synthese"]},
+                  f, ensure_ascii=False, indent=1)
+
+    # Rapport du Validateur (étape 7)
+    with open(OUTPUT_DIR / "validation.json", "w", encoding="utf-8") as f:
+        json.dump(resultat["validation"], f, ensure_ascii=False, indent=1)
+
+    print(f"Terminé : {len(resultat['faits'])} alertes, "
+          f"{len(resultat['textes'])} textes. Voir le dossier output/")
+    rpt = resultat.get("report", {})
+    if rpt.get("html"):
+        print(f"  -> Rapport HTML : {rpt['html']}")
+    if rpt.get("csv"):
+        print(f"  -> CSV alertes  : {rpt['csv']}")
+    return resultat
 
 
 if __name__ == "__main__":
